@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
@@ -15,16 +16,13 @@
   --text: #1f2937;
   --muted: #6b7280;
 }
-
 * { box-sizing: border-box; }
-
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;
   background: var(--bg);
   color: var(--text);
 }
-
 header {
   background: var(--card);
   padding: 16px;
@@ -33,7 +31,6 @@ header {
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(0,0,0,.05);
 }
-
 #search {
   width: calc(100% - 24px);
   margin: 12px;
@@ -42,9 +39,7 @@ header {
   border: 1px solid #e5e7eb;
   font-size: 15px;
 }
-
 .list { padding: 12px; }
-
 .item {
   background: var(--card);
   margin-bottom: 12px;
@@ -55,10 +50,8 @@ header {
   align-items: center;
   box-shadow: 0 6px 14px rgba(0,0,0,.06);
 }
-
 .item strong { font-weight: 600; }
 .item small { color: var(--muted); }
-
 .btn {
   padding: 10px 14px;
   background: var(--primary);
@@ -67,14 +60,11 @@ header {
   border-radius: 12px;
   font-size: 14px;
 }
-
 .btn.small { padding: 8px 10px; font-size: 13px; }
-
 #form {
   display: none;
   padding: 14px;
 }
-
 input {
   width: 100%;
   padding: 12px;
@@ -83,9 +73,7 @@ input {
   border: 1px solid #e5e7eb;
   font-size: 15px;
 }
-
 #scanner { padding: 12px; }
-
 footer {
   position: fixed;
   bottom: 0;
@@ -94,7 +82,6 @@ footer {
   display: flex;
   box-shadow: 0 -2px 10px rgba(0,0,0,.08);
 }
-
 footer button {
   flex: 1;
   border: none;
@@ -107,22 +94,29 @@ footer button {
 </style>
 </head>
 <body>
-Estoque / Inventário
-
-
-
-  Inventário
-  
-  
-  
-<button class="btn" id="btnSalvar" onclick="salvar()">Salvar</button>
-
-
-
+<header>Estoque / Inventário</header>
+<input id="search" placeholder="Buscar produto...">
+<div class="list" id="lista"></div>
+<div id="form">
+  <h3>Inventário</h3>
+  <input id="codigo" placeholder="Código">
+  <input id="descricao" placeholder="Descrição" readonly>
+  <input id="modelo" placeholder="Modelo" readonly>
+  <input id="cor" placeholder="Cor" readonly>
+  <input id="tamanho" placeholder="Tamanho" readonly>
+  <input id="qtd_atual" placeholder="Qtd Atual" readonly>
+  <input id="contagem1" placeholder="Contagem 1">
+  <input id="contagem2" placeholder="Contagem 2">
+  <input id="contagem3" placeholder="Contagem 3">
+  <input id="obs" placeholder="Observação">
+  <button class="btn" id="btnSalvar" onclick="salvar()">Salvar</button>
+</div>
+<div id="scanner" style="display:none"></div>
+<footer>
   <button onclick="listar()">Início</button>
   <button onclick="abrirScanner()">📷 Código</button>
   <button onclick="novo()">Novo</button>
-
+</footer>
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbxTi5AFX39uZnBetd1VLwPy-lYGqudUspXfA_zozonkhl9p2xDPsri1jfFtL9vGBi_e/exec";
 
@@ -132,212 +126,194 @@ let salvando = false;
 
 // LISTAR
 function listar() {
-document.getElementById("form").style.display = "none";
-document.getElementById("scanner").style.display = "none";
-document.getElementById("lista").style.display = "block";
+  document.getElementById("form").style.display = "none";
+  document.getElementById("scanner").style.display = "none";
+  document.getElementById("lista").style.display = "block";
 
-fetch(API_URL + "?action=listarProdutos")
-.then(r => r.json())
-.then(d => {
-itens = d;
-render(d);
-});
+  fetch(API_URL + "?action=listarProdutos")
+    .then(r => r.json())
+    .then(d => {
+      itens = d;
+      render(d);
+    })
+    .catch(err => console.error("Erro ao listar produtos:", err));
 }
 
 // RENDER
 function render(data) {
-const div = document.getElementById("lista");
-div.innerHTML = "";
+  const div = document.getElementById("lista");
+  div.innerHTML = "";
 
-data.forEach(i => {
-if (!i.codigo_barras) return;
+  data.forEach(i => {
+    if (!i.codigo_barras) return;
 
-div.innerHTML += `
-<div class="item">
-<div>
-<strong>${i.descricao}</strong><br>
-<small>Qtd: ${i.qtd_atual}</small>
-</div>
-<button class="btn small" onclick='editar(${JSON.stringify(i)})'>Editar</button>
-</div>
-`;
-});
+    div.innerHTML += `
+      <div class="item">
+        <div>
+          <strong>${i.descricao || 'Sem descrição'}</strong><br>
+          <small>Qtd: ${i.qtd_atual || 0}</small>
+        </div>
+        <button class="btn small" onclick='editar(${JSON.stringify(i)})'>Editar</button>
+      </div>
+    `;
+  });
 }
 
 // BUSCA NA LISTA
 document.getElementById("search").addEventListener("input", e => {
-const t = e.target.value.toLowerCase();
-render(itens.filter(i =>
-JSON.stringify(i).toLowerCase().includes(t)
-));
+  const t = e.target.value.toLowerCase();
+  render(itens.filter(i =>
+    JSON.stringify(i).toLowerCase().includes(t)
+  ));
 });
 
 // EDITAR
 function editar(i) {
-itemAtual = i;
-document.getElementById("lista").style.display = "none";
-document.getElementById("form").style.display = "block";
+  itemAtual = i;
+  document.getElementById("lista").style.display = "none";
+  document.getElementById("form").style.display = "block";
 
-codigo.value = i.codigo_barras || "";
-descricao.value = i.descricao || "";
-modelo.value = i.modelo || "";
-cor.value = i.cor || "";
-tamanho.value = i.tamanho || "";
-qtd_atual.value = i.qtd_atual || "";
+  document.getElementById("codigo").value = i.codigo_barras || "";
+  document.getElementById("descricao").value = i.descricao || "";
+  document.getElementById("modelo").value = i.modelo || "";
+  document.getElementById("cor").value = i.cor || "";
+  document.getElementById("tamanho").value = i.tamanho || "";
+  document.getElementById("qtd_atual").value = i.qtd_atual || "";
 }
 
+// NOVO
 function novo() {
-itemAtual = {};
-document.getElementById("lista").style.display = "none";
-document.getElementById("form").style.display = "block";
+  itemAtual = {};
+  document.getElementById("lista").style.display = "none";
+  document.getElementById("form").style.display = "block";
 
-// Limpa todos os campos
-codigo.value = "";
-descricao.value = "";
-modelo.value = "";
-cor.value = "";
-tamanho.value = "";
-qtd_atual.value = "";
-contagem1.value = "";
-contagem2.value = "";
-contagem3.value = "";
-obs.value = "";
+  document.getElementById("codigo").value = "";
+  document.getElementById("descricao").value = "";
+  document.getElementById("modelo").value = "";
+  document.getElementById("cor").value = "";
+  document.getElementById("tamanho").value = "";
+  document.getElementById("qtd_atual").value = "";
+  document.getElementById("contagem1").value = "";
+  document.getElementById("contagem2").value = "";
+  document.getElementById("contagem3").value = "";
+  document.getElementById("obs").value = "";
 }
 
 // SALVAR
 function salvar() {
-if (salvando) return;
-salvando = true;
+  if (salvando) return;
+  salvando = true;
 
-const btn = document.getElementById("btnSalvar");
-btn.disabled = true;
-btn.innerText = "Salvando...";
+  const btn = document.getElementById("btnSalvar");
+  btn.disabled = true;
+  btn.innerText = "Salvando...";
 
-const data = {
-action: "salvar",
-codigo_barras: codigo.value.trim(),
-descricao: descricao.value,
-modelo: modelo.value,
-cor: cor.value,
-tamanho: tamanho.value,
-qtd_atual: qtd_atual.value,
-contagem_1: contagem1.value,
-contagem_2: contagem2.value,
-contagem_3: contagem3.value,
-observacao: obs.value,
-_row: itemAtual?._row
-};
+  const data = {
+    action: "salvar",
+    codigo_barras: document.getElementById("codigo").value.trim(),
+    descricao: document.getElementById("descricao").value,
+    modelo: document.getElementById("modelo").value,
+    cor: document.getElementById("cor").value,
+    tamanho: document.getElementById("tamanho").value,
+    qtd_atual: document.getElementById("qtd_atual").value,
+    contagem_1: document.getElementById("contagem1").value,
+    contagem_2: document.getElementById("contagem2").value,
+    contagem_3: document.getElementById("contagem3").value,
+    observacao: document.getElementById("obs").value,
+    _row: itemAtual?._row
+  };
 
-fetch(API_URL, {
-method: "POST",
-body: JSON.stringify(data),
-headers: { "Content-Type": "text/plain" }
-}).finally(() => {
-salvando = false;
-btn.disabled = false;
-btn.innerText = "Salvar";
-});
-
-limparFormulario();
-listar();
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(data)
+  })
+  .then(() => {
+    limparFormulario();
+    listar();
+  })
+  .catch(err => {
+    console.error("Erro ao salvar:", err);
+    alert("Erro ao salvar. Tente novamente.");
+  })
+  .finally(() => {
+    salvando = false;
+    btn.disabled = false;
+    btn.innerText = "Salvar";
+  });
 }
 
-// LIMPAR FORMULÁRIO E VOLTAR À LISTA
+// LIMPAR FORMULÁRIO
 function limparFormulario() {
-itemAtual = null;
-codigo.value = "";
-descricao.value = "";
-modelo.value = "";
-cor.value = "";
-tamanho.value = "";
-qtd_atual.value = "";
-contagem1.value = "";
-contagem2.value = "";
-contagem3.value = "";
-obs.value = "";
-document.getElementById("form").style.display = "none";
-document.getElementById("lista").style.display = "block";
+  itemAtual = null;
+  document.getElementById("codigo").value = "";
+  document.getElementById("descricao").value = "";
+  document.getElementById("modelo").value = "";
+  document.getElementById("cor").value = "";
+  document.getElementById("tamanho").value = "";
+  document.getElementById("qtd_atual").value = "";
+  document.getElementById("contagem1").value = "";
+  document.getElementById("contagem2").value = "";
+  document.getElementById("contagem3").value = "";
+  document.getElementById("obs").value = "";
+  document.getElementById("form").style.display = "none";
+  document.getElementById("lista").style.display = "block";
 }
 
 // SCANNER
 function abrirScanner() {
-document.getElementById("lista").style.display = "none";
-document.getElementById("scanner").innerHTML = ""; // Limpa scanner anterior
-document.getElementById("scanner").style.display = "block";
+  document.getElementById("lista").style.display = "none";
+  document.getElementById("scanner").innerHTML = ""; // limpa scanner anterior
+  document.getElementById("scanner").style.display = "block";
 
-const html5 = new Html5Qrcode("scanner");
-html5.start(
-{ facingMode: "environment" },
-{ fps: 10, qrbox: { width: 250, height: 250 } },
-code => {
-html5.stop().then(() => {
-document.getElementById("scanner").innerHTML = "";
-document.getElementById("scanner").style.display = "none";
-});
-buscarCodigo(code);
-},
-error => { /* ignorar erros de leitura */ }
-).catch(err => {
-alert("Erro ao iniciar a câmera: " + err);
-});
+  const html5 = new Html5Qrcode("scanner");
+  html5.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    code => {
+      html5.stop().then(() => {
+        document.getElementById("scanner").innerHTML = "";
+        document.getElementById("scanner").style.display = "none";
+      });
+      buscarCodigo(code.trim());
+    },
+    err => { /* ignora erros de leitura */ }
+  ).catch(err => alert("Erro ao acessar a câmera: " + err));
 }
 
-function buscarCodigo(codigoLido) {
-fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(codigoLido.trim()))
-.then(r => r.json())
-.then(d => {
-if (d.notFound) {
-novo();
-codigo.value = codigoLido.trim();
-alert("Produto não encontrado. Preencha os dados para cadastrar um novo.");
-} else {
-editar(d);
-}
-})
-.catch(err => {
-console.error(err);
-alert("Erro ao buscar produto. Verifique sua conexão.");
-});
+function buscarCodigo(codigo) {
+  fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(codigo))
+    .then(r => r.json())
+    .then(d => {
+      if (d.notFound) {
+        novo();
+        document.getElementById("codigo").value = codigo;
+        alert("Produto não encontrado. Preencha os dados para cadastrar um novo.");
+      } else {
+        editar(d);
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Erro ao buscar produto.");
+    });
 }
 
-// BUSCA MANUAL AO DIGITAR O CÓDIGO
+// BUSCA MANUAL AO DIGITAR CÓDIGO
 document.getElementById("codigo").addEventListener("blur", function() {
-const codigoDigitado = this.value.trim();
-if (codigoDigitado && (!itemAtual || (itemAtual.codigo_barras || "").toString().trim() !== codigoDigitado)) {
-buscarCodigoManual(codigoDigitado);
-}
+  const codigoDigitado = this.value.trim();
+  if (codigoDigitado && (!itemAtual || itemAtual.codigo_barras !== codigoDigitado)) {
+    buscarCodigo(codigoDigitado);
+  }
 });
 
-// Permitir busca com Enter no campo código
 document.getElementById("codigo").addEventListener("keydown", function(e) {
-if (e.key === "Enter") {
-e.preventDefault();
-this.blur();
-}
+  if (e.key === "Enter") {
+    e.preventDefault();
+    this.blur();
+  }
 });
 
-function buscarCodigoManual(codigo) {
-fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(codigo))
-.then(r => r.json())
-.then(d => {
-if (d.notFound) {
-descricao.value = "";
-modelo.value = "";
-cor.value = "";
-tamanho.value = "";
-qtd_atual.value = "";
-alert("Produto não encontrado. Preencha os dados para cadastrar um novo.");
-} else {
-editar(d);
-}
-})
-.catch(err => {
-console.error(err);
-alert("Erro ao buscar produto. Verifique sua conexão.");
-});
-}
-
-// Inicia a aplicação listando os produtos
+// Inicia a aplicação
 listar();
 </script>
 </body>
