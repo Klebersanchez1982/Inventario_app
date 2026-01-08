@@ -1,16 +1,12 @@
-<!DOCTYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inventário</title>
-
 <script src="https://unpkg.com/html5-qrcode"></script>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
 <style>
 :root {
   --primary: #4f8cff;
@@ -110,39 +106,22 @@ footer button {
 }
 </style>
 </head>
-
 <body>
+Estoque / Inventário
 
-<header>Estoque / Inventário</header>
 
-<input id="search" placeholder="Buscar produto...">
 
-<div class="list" id="lista"></div>
+  Inventário
+  
+  
+  
+<button class="btn" id="btnSalvar" onclick="salvar()">Salvar</button>
 
-<div id="form">
-  <h3>Inventário</h3>
 
-  <input id="codigo" placeholder="Código">
-  <input id="descricao" placeholder="Descrição" readonly>
-  <input id="modelo" placeholder="Modelo" readonly>
-  <input id="cor" placeholder="Cor" readonly>
-  <input id="tamanho" placeholder="Tamanho" readonly>
-  <input id="qtd_atual" placeholder="Qtd Atual" readonly>
-  <input id="contagem1" placeholder="Contagem 1">
-  <input id="contagem2" placeholder="Contagem 2">
-  <input id="contagem3" placeholder="Contagem 3">
-  <input id="obs" placeholder="Observação">
 
-  <button class="btn" id="btnSalvar" onclick="salvar()">Salvar</button>
-</div>
-
-<div id="scanner" style="display:none"></div>
-
-<footer>
   <button onclick="listar()">Início</button>
   <button onclick="abrirScanner()">📷 Código</button>
   <button onclick="novo()">Novo</button>
-</footer>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbxTi5AFX39uZnBetd1VLwPy-lYGqudUspXfA_zozonkhl9p2xDPsri1jfFtL9vGBi_e/exec";
@@ -153,170 +132,213 @@ let salvando = false;
 
 // LISTAR
 function listar() {
-  document.getElementById("form").style.display = "none";
-  document.getElementById("scanner").style.display = "none";
-  document.getElementById("lista").style.display = "block";
+document.getElementById("form").style.display = "none";
+document.getElementById("scanner").style.display = "none";
+document.getElementById("lista").style.display = "block";
 
-  fetch(API_URL + "?action=listarProdutos")
-    .then(r => r.json())
-    .then(d => {
-      itens = d;
-      render(d);
-    });
+fetch(API_URL + "?action=listarProdutos")
+.then(r => r.json())
+.then(d => {
+itens = d;
+render(d);
+});
 }
 
 // RENDER
 function render(data) {
-  const div = document.getElementById("lista");
-  div.innerHTML = "";
+const div = document.getElementById("lista");
+div.innerHTML = "";
 
-  data.forEach(i => {
-    if (!i.codigo_barras) return;
+data.forEach(i => {
+if (!i.codigo_barras) return;
 
-    div.innerHTML += `
-      <div class="item">
-        <div>
-          <strong>${i.descricao}</strong><br>
-          <small>Qtd: ${i.qtd_atual}</small>
-        </div>
-        <button class="btn small" onclick='editar(${JSON.stringify(i)})'>Editar</button>
-      </div>
-    `;
-  });
+div.innerHTML += `
+<div class="item">
+<div>
+<strong>${i.descricao}</strong><br>
+<small>Qtd: ${i.qtd_atual}</small>
+</div>
+<button class="btn small" onclick='editar(${JSON.stringify(i)})'>Editar</button>
+</div>
+`;
+});
 }
 
-// BUSCA
+// BUSCA NA LISTA
 document.getElementById("search").addEventListener("input", e => {
-  const t = e.target.value.toLowerCase();
-  render(itens.filter(i =>
-    JSON.stringify(i).toLowerCase().includes(t)
-  ));
+const t = e.target.value.toLowerCase();
+render(itens.filter(i =>
+JSON.stringify(i).toLowerCase().includes(t)
+));
 });
 
 // EDITAR
 function editar(i) {
-  itemAtual = i;
-  document.getElementById("lista").style.display = "none";
-  document.getElementById("form").style.display = "block";
+itemAtual = i;
+document.getElementById("lista").style.display = "none";
+document.getElementById("form").style.display = "block";
 
-  // Preenche os campos automaticamente com as informações do produto
-  codigo.value = i.codigo_barras || "";
-  descricao.value = i.descricao || "";
-  modelo.value = i.modelo || "";
-  cor.value = i.cor || "";
-  tamanho.value = i.tamanho || "";
-  qtd_atual.value = i.qtd_atual || "";
+codigo.value = i.codigo_barras || "";
+descricao.value = i.descricao || "";
+modelo.value = i.modelo || "";
+cor.value = i.cor || "";
+tamanho.value = i.tamanho || "";
+qtd_atual.value = i.qtd_atual || "";
 }
 
 function novo() {
-  itemAtual = {};
-  document.getElementById("lista").style.display = "none";
-  document.getElementById("form").style.display = "block";
+itemAtual = {};
+document.getElementById("lista").style.display = "none";
+document.getElementById("form").style.display = "block";
+
+// Limpa todos os campos
+codigo.value = "";
+descricao.value = "";
+modelo.value = "";
+cor.value = "";
+tamanho.value = "";
+qtd_atual.value = "";
+contagem1.value = "";
+contagem2.value = "";
+contagem3.value = "";
+obs.value = "";
 }
 
 // SALVAR
 function salvar() {
-  if (salvando) return;
-  salvando = true;
+if (salvando) return;
+salvando = true;
 
-  const btn = document.getElementById("btnSalvar");
-  btn.disabled = true;
-  btn.innerText = "Salvando...";
+const btn = document.getElementById("btnSalvar");
+btn.disabled = true;
+btn.innerText = "Salvando...";
 
-  const data = {
-    action: "salvar",
-    codigo_barras: codigo.value,
-    descricao: descricao.value,
-    modelo: modelo.value,
-    cor: cor.value,
-    tamanho: tamanho.value,
-    qtd_atual: qtd_atual.value,  // Quantidade inserida pelo usuário
-    contagem_1: contagem1.value,
-    contagem_2: contagem2.value,
-    contagem_3: contagem3.value,
-    observacao: obs.value,
-    _row: itemAtual?._row
-  };
+const data = {
+action: "salvar",
+codigo_barras: codigo.value.trim(),
+descricao: descricao.value,
+modelo: modelo.value,
+cor: cor.value,
+tamanho: tamanho.value,
+qtd_atual: qtd_atual.value,
+contagem_1: contagem1.value,
+contagem_2: contagem2.value,
+contagem_3: contagem3.value,
+observacao: obs.value,
+_row: itemAtual?._row
+};
 
-  fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(data)
-  }).finally(() => {
-    salvando = false;
-    btn.disabled = false;
-    btn.innerText = "Salvar";
-  });
+fetch(API_URL, {
+method: "POST",
+body: JSON.stringify(data),
+headers: { "Content-Type": "text/plain" }
+}).finally(() => {
+salvando = false;
+btn.disabled = false;
+btn.innerText = "Salvar";
+});
 
-  // Verifica duplicidade de código após salvar
-  verificarDuplicidade();
-
-  limparFormulario();
-  listar();
+limparFormulario();
+listar();
 }
 
-// LIMPA E LIBERA IMEDIATO
+// LIMPAR FORMULÁRIO E VOLTAR À LISTA
 function limparFormulario() {
-  itemAtual = null;
-  codigo.value = "";
-  descricao.value = "";
-  modelo.value = "";
-  cor.value = "";
-  tamanho.value = "";
-  qtd_atual.value = "";
-  contagem1.value = "";
-  contagem2.value = "";
-  contagem3.value = "";
-  obs.value = "";
-  form.style.display = "none";
-  lista.style.display = "block";
+itemAtual = null;
+codigo.value = "";
+descricao.value = "";
+modelo.value = "";
+cor.value = "";
+tamanho.value = "";
+qtd_atual.value = "";
+contagem1.value = "";
+contagem2.value = "";
+contagem3.value = "";
+obs.value = "";
+document.getElementById("form").style.display = "none";
+document.getElementById("lista").style.display = "block";
 }
 
 // SCANNER
 function abrirScanner() {
-  lista.style.display = "none";
-  scanner.style.display = "block";
+document.getElementById("lista").style.display = "none";
+document.getElementById("scanner").innerHTML = ""; // Limpa scanner anterior
+document.getElementById("scanner").style.display = "block";
 
-  const html5 = new Html5Qrcode("scanner");
-  html5.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
-    code => {
-      html5.stop();
-      buscarCodigo(code);
-    });
+const html5 = new Html5Qrcode("scanner");
+html5.start(
+{ facingMode: "environment" },
+{ fps: 10, qrbox: { width: 250, height: 250 } },
+code => {
+html5.stop().then(() => {
+document.getElementById("scanner").innerHTML = "";
+document.getElementById("scanner").style.display = "none";
+});
+buscarCodigo(code);
+},
+error => { /* ignorar erros de leitura */ }
+).catch(err => {
+alert("Erro ao iniciar a câmera: " + err);
+});
 }
 
 function buscarCodigo(codigoLido) {
-  fetch(API_URL + "?action=buscar&codigo=" + codigoLido)
-    .then(r => r.json())
-    .then(d => {
-      if (d.notFound) {
-        novo();
-        codigo.value = codigoLido;
-      } else {
-        editar(d);
-      }
-    });
+fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(codigoLido.trim()))
+.then(r => r.json())
+.then(d => {
+if (d.notFound) {
+novo();
+codigo.value = codigoLido.trim();
+alert("Produto não encontrado. Preencha os dados para cadastrar um novo.");
+} else {
+editar(d);
+}
+})
+.catch(err => {
+console.error(err);
+alert("Erro ao buscar produto. Verifique sua conexão.");
+});
 }
 
-// Função para verificar duplicidade de código
-function verificarDuplicidade() {
-  const sheet = SpreadsheetApp.getActive().getSheetByName("CADASTRO_PRODUTOS");
-  const data = sheet.getDataRange().getValues();
-  const codigos = {};
+// BUSCA MANUAL AO DIGITAR O CÓDIGO
+document.getElementById("codigo").addEventListener("blur", function() {
+const codigoDigitado = this.value.trim();
+if (codigoDigitado && (!itemAtual || (itemAtual.codigo_barras || "").toString().trim() !== codigoDigitado)) {
+buscarCodigoManual(codigoDigitado);
+}
+});
 
-  for (let i = 1; i < data.length; i++) {  // Inicia da linha 2
-    const codigo = data[i][0];  // A primeira coluna contém o código de barras
-    if (codigos[codigo]) {
-      // Pinta a linha de vermelho se houver duplicidade
-      sheet.getRange(i + 1, 1, 1, sheet.getLastColumn()).setBackground("#FFCCCC");
-      sheet.getRange(codigos[codigo], 1, 1, sheet.getLastColumn()).setBackground("#FFCCCC");
-    } else {
-      codigos[codigo] = i + 1;  // Armazena a linha onde o código foi encontrado
-    }
-  }
+// Permitir busca com Enter no campo código
+document.getElementById("codigo").addEventListener("keydown", function(e) {
+if (e.key === "Enter") {
+e.preventDefault();
+this.blur();
+}
+});
+
+function buscarCodigoManual(codigo) {
+fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(codigo))
+.then(r => r.json())
+.then(d => {
+if (d.notFound) {
+descricao.value = "";
+modelo.value = "";
+cor.value = "";
+tamanho.value = "";
+qtd_atual.value = "";
+alert("Produto não encontrado. Preencha os dados para cadastrar um novo.");
+} else {
+editar(d);
+}
+})
+.catch(err => {
+console.error(err);
+alert("Erro ao buscar produto. Verifique sua conexão.");
+});
 }
 
+// Inicia a aplicação listando os produtos
 listar();
 </script>
-
 </body>
 </html>
