@@ -199,7 +199,7 @@ function editar(i) {
   document.getElementById("lista").style.display = "none";
   document.getElementById("form").style.display = "block";
 
-  // Preenchendo os campos com os dados do produto
+  // Preenche os campos automaticamente com as informações do produto
   codigo.value = i.codigo_barras || "";
   descricao.value = i.descricao || "";
   modelo.value = i.modelo || "";
@@ -230,7 +230,7 @@ function salvar() {
     modelo: modelo.value,
     cor: cor.value,
     tamanho: tamanho.value,
-    qtd_atual: qtd_atual.value,
+    qtd_atual: qtd_atual.value,  // Quantidade inserida pelo usuário
     contagem_1: contagem1.value,
     contagem_2: contagem2.value,
     contagem_3: contagem3.value,
@@ -246,6 +246,9 @@ function salvar() {
     btn.disabled = false;
     btn.innerText = "Salvar";
   });
+
+  // Verifica duplicidade de código após salvar
+  verificarDuplicidade();
 
   limparFormulario();
   listar();
@@ -293,6 +296,26 @@ function buscarCodigo(codigoLido) {
       }
     });
 }
+
+// Função para verificar duplicidade de código
+function verificarDuplicidade() {
+  const sheet = SpreadsheetApp.getActive().getSheetByName("CADASTRO_PRODUTOS");
+  const data = sheet.getDataRange().getValues();
+  const codigos = {};
+
+  for (let i = 1; i < data.length; i++) {  // Inicia da linha 2
+    const codigo = data[i][0];  // A primeira coluna contém o código de barras
+    if (codigos[codigo]) {
+      // Pinta a linha de vermelho se houver duplicidade
+      sheet.getRange(i + 1, 1, 1, sheet.getLastColumn()).setBackground("#FFCCCC");
+      sheet.getRange(codigos[codigo], 1, 1, sheet.getLastColumn()).setBackground("#FFCCCC");
+    } else {
+      codigos[codigo] = i + 1;  // Armazena a linha onde o código foi encontrado
+    }
+  }
+}
+
+listar();
 </script>
 
 </body>
