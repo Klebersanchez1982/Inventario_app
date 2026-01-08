@@ -5,88 +5,108 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inventário</title>
 
-<!-- Scanner -->
 <script src="https://unpkg.com/html5-qrcode"></script>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
 <style>
+:root {
+  --primary: #4f8cff;
+  --bg: #f6f8fb;
+  --card: #ffffff;
+  --text: #1f2937;
+  --muted: #6b7280;
+}
+
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f2f2f2;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
 header {
-  background: #1976d2;
-  color: #fff;
-  padding: 12px;
+  background: var(--card);
+  padding: 16px;
   text-align: center;
   font-size: 18px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
 }
 
 #search {
-  width: 95%;
-  padding: 10px;
-  margin: 10px;
-  font-size: 16px;
+  width: calc(100% - 24px);
+  margin: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  font-size: 15px;
 }
 
-.list {
-  padding: 10px;
-}
+.list { padding: 12px; }
 
 .item {
-  background: #fff;
-  margin-bottom: 10px;
-  padding: 10px;
-  border-radius: 6px;
+  background: var(--card);
+  margin-bottom: 12px;
+  padding: 14px;
+  border-radius: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: 0 6px 14px rgba(0,0,0,.06);
 }
 
-.item strong {
-  display: block;
-}
+.item strong { font-weight: 600; }
+.item small { color: var(--muted); }
 
 .btn {
-  padding: 8px 12px;
-  background: #1976d2;
+  padding: 10px 14px;
+  background: var(--primary);
   color: #fff;
   border: none;
-  border-radius: 5px;
-}
-
-.btn.small {
-  padding: 6px 8px;
+  border-radius: 12px;
   font-size: 14px;
 }
 
+.btn.small { padding: 8px 10px; font-size: 13px; }
+
 #form {
   display: none;
-  padding: 10px;
+  padding: 14px;
 }
 
 input {
   width: 100%;
-  padding: 8px;
-  margin-bottom: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  font-size: 15px;
 }
+
+#scanner { padding: 12px; }
 
 footer {
   position: fixed;
   bottom: 0;
   width: 100%;
-  background: #1976d2;
+  background: var(--card);
   display: flex;
+  box-shadow: 0 -2px 10px rgba(0,0,0,.08);
 }
 
 footer button {
   flex: 1;
   border: none;
-  padding: 12px;
-  color: #fff;
+  padding: 14px;
+  font-size: 15px;
   background: none;
-  font-size: 16px;
+  color: var(--primary);
+  font-weight: 500;
 }
 </style>
 </head>
@@ -103,14 +123,17 @@ footer button {
   <h3>Inventário</h3>
 
   <input id="codigo" placeholder="Código">
-  <input id="descricao" placeholder="Descrição">
-  <input id="qtd_atual" placeholder="Qtd Atual">
+  <input id="descricao" placeholder="Descrição" readonly>
+  <input id="modelo" placeholder="Modelo" readonly>
+  <input id="cor" placeholder="Cor" readonly>
+  <input id="tamanho" placeholder="Tamanho" readonly>
+  <input id="qtd_atual" placeholder="Qtd Atual" readonly>
   <input id="contagem1" placeholder="Contagem 1">
   <input id="contagem2" placeholder="Contagem 2">
   <input id="contagem3" placeholder="Contagem 3">
   <input id="obs" placeholder="Observação">
 
-  <button class="btn" onclick="salvar()">Salvar</button>
+  <button class="btn" id="btnSalvar" onclick="salvar()">Salvar</button>
 </div>
 
 <div id="scanner" style="display:none"></div>
@@ -126,14 +149,14 @@ const API_URL = "https://script.google.com/macros/s/AKfycbxTi5AFX39uZnBetd1VLwPy
 
 let itens = [];
 let itemAtual = null;
+let salvando = false;
 
-// LISTAR
 function listar() {
   document.getElementById("form").style.display = "none";
   document.getElementById("scanner").style.display = "none";
   document.getElementById("lista").style.display = "block";
 
-  fetch(API_URL + "?action=listar")
+  fetch(API_URL + "?action=listarProdutos")
     .then(r => r.json())
     .then(d => {
       itens = d;
@@ -141,27 +164,25 @@ function listar() {
     });
 }
 
-// RENDER
 function render(data) {
   const div = document.getElementById("lista");
   div.innerHTML = "";
 
   data.forEach(i => {
-    if (!i.codigo_novo && !i.codigo_antigo) return;
+    if (!i.codigo_barras) return;
 
     div.innerHTML += `
       <div class="item">
         <div>
-          <strong>${i.descricao_nova || i.descricao_antiga}</strong>
-          Qtd: ${i.qtd_atual}
+          <strong>${i.descricao}</strong><br>
+          <small>Qtd: ${i.qtd_atual}</small>
         </div>
-        <button class="btn small" onclick='editar(${JSON.stringify(i)})'>✏️</button>
+        <button class="btn small" onclick='editar(${JSON.stringify(i)})'>Editar</button>
       </div>
     `;
   });
 }
 
-// BUSCA
 document.getElementById("search").addEventListener("input", e => {
   const t = e.target.value.toLowerCase();
   render(itens.filter(i =>
@@ -169,30 +190,40 @@ document.getElementById("search").addEventListener("input", e => {
   ));
 });
 
-// EDITAR
 function editar(i) {
   itemAtual = i;
   document.getElementById("lista").style.display = "none";
   document.getElementById("form").style.display = "block";
 
-  codigo.value = i.codigo_novo || i.codigo_antigo || "";
-  descricao.value = i.descricao_nova || i.descricao_antiga || "";
+  codigo.value = i.codigo_barras || "";
+  descricao.value = i.descricao || "";
+  modelo.value = i.modelo || "";
+  cor.value = i.cor || "";
+  tamanho.value = i.tamanho || "";
   qtd_atual.value = i.qtd_atual || "";
 }
 
-// NOVO
 function novo() {
   itemAtual = {};
   document.getElementById("lista").style.display = "none";
   document.getElementById("form").style.display = "block";
 }
 
-// SALVAR
 function salvar() {
+  if (salvando) return;
+  salvando = true;
+
+  const btn = document.getElementById("btnSalvar");
+  btn.disabled = true;
+  btn.innerText = "Salvando...";
+
   const data = {
     action: "salvar",
-    codigo_novo: codigo.value,
-    descricao_nova: descricao.value,
+    codigo_barras: codigo.value,
+    descricao: descricao.value,
+    modelo: modelo.value,
+    cor: cor.value,
+    tamanho: tamanho.value,
     qtd_atual: qtd_atual.value,
     contagem_1: contagem1.value,
     contagem_2: contagem2.value,
@@ -204,42 +235,56 @@ function salvar() {
   fetch(API_URL, {
     method: "POST",
     body: JSON.stringify(data)
-  }).then(() => {
-    alert("Salvo!");
-    listar();
+  }).finally(() => {
+    salvando = false;
+    btn.disabled = false;
+    btn.innerText = "Salvar";
   });
+
+  limparFormulario();
+  listar();
 }
 
-// SCANNER
+function limparFormulario() {
+  itemAtual = null;
+  codigo.value = "";
+  descricao.value = "";
+  modelo.value = "";
+  cor.value = "";
+  tamanho.value = "";
+  qtd_atual.value = "";
+  contagem1.value = "";
+  contagem2.value = "";
+  contagem3.value = "";
+  obs.value = "";
+  form.style.display = "none";
+  lista.style.display = "block";
+}
+
 function abrirScanner() {
-  document.getElementById("lista").style.display = "none";
-  document.getElementById("scanner").style.display = "block";
+  lista.style.display = "none";
+  scanner.style.display = "block";
 
-  const scanner = new Html5Qrcode("scanner");
-  scanner.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: 250 },
+  const html5 = new Html5Qrcode("scanner");
+  html5.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
     code => {
-      scanner.stop();
+      html5.stop();
       buscarCodigo(code);
-    }
-  );
+    });
 }
 
-function buscarCodigo(codigo) {
-  fetch(API_URL + "?action=buscar&codigo=" + codigo)
+function buscarCodigo(codigoLido) {
+  fetch(API_URL + "?action=buscar&codigo=" + codigoLido)
     .then(r => r.json())
     .then(d => {
       if (d.notFound) {
         novo();
-        document.getElementById("codigo").value = codigo;
+        codigo.value = codigoLido;
       } else {
         editar(d);
       }
     });
 }
-
-listar();
 </script>
 
 </body>
