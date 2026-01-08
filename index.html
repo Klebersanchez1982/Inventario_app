@@ -151,6 +151,7 @@ let itens = [];
 let itemAtual = null;
 let salvando = false;
 
+// LISTAR
 function listar() {
   document.getElementById("form").style.display = "none";
   document.getElementById("scanner").style.display = "none";
@@ -164,6 +165,7 @@ function listar() {
     });
 }
 
+// RENDER
 function render(data) {
   const div = document.getElementById("lista");
   div.innerHTML = "";
@@ -183,6 +185,7 @@ function render(data) {
   });
 }
 
+// BUSCA
 document.getElementById("search").addEventListener("input", e => {
   const t = e.target.value.toLowerCase();
   render(itens.filter(i =>
@@ -190,11 +193,13 @@ document.getElementById("search").addEventListener("input", e => {
   ));
 });
 
+// EDITAR
 function editar(i) {
   itemAtual = i;
   document.getElementById("lista").style.display = "none";
   document.getElementById("form").style.display = "block";
 
+  // Preenchendo os campos com os dados do produto
   codigo.value = i.codigo_barras || "";
   descricao.value = i.descricao || "";
   modelo.value = i.modelo || "";
@@ -209,6 +214,7 @@ function novo() {
   document.getElementById("form").style.display = "block";
 }
 
+// SALVAR
 function salvar() {
   if (salvando) return;
   salvando = true;
@@ -245,6 +251,7 @@ function salvar() {
   listar();
 }
 
+// LIMPA E LIBERA IMEDIATO
 function limparFormulario() {
   itemAtual = null;
   codigo.value = "";
@@ -261,6 +268,7 @@ function limparFormulario() {
   lista.style.display = "block";
 }
 
+// SCANNER
 function abrirScanner() {
   lista.style.display = "none";
   scanner.style.display = "block";
