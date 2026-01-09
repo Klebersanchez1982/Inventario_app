@@ -103,14 +103,16 @@ footer button {
   <h3>Inventário</h3>
 
   <input id="codigo" placeholder="Código">
-  <input id="descricao" placeholder="Descrição">
-  <input id="qtd_atual" placeholder="Qtd Atual">
-  <input id="contagem1" placeholder="Contagem 1">
-  <input id="contagem2" placeholder="Contagem 2">
-  <input id="contagem3" placeholder="Contagem 3">
-  <input id="obs" placeholder="Observação">
+  <input id="descricao" placeholder="Descrição" readonly>
+  <input id="qtd_atual" placeholder="Qtd Atual" readonly>
 
-  <button class="btn" onclick="salvar()">Salvar</button>
+  <!-- Quantidade do inventário = Contagem 1 -->
+  <input id="contagem1" placeholder="Quantidade (Inventário)">
+  <input id="contagem2" placeholder="Contagem 2 (opcional)">
+  <input id="contagem3" placeholder="Contagem 3 (opcional)">
+  <input id="obs" placeholder="Observação (opcional)">
+
+  <button class="btn" id="btnSalvar" onclick="salvar()">Salvar</button>
 </div>
 
 <div id="scanner" style="display:none"></div>
@@ -122,123 +124,194 @@ footer button {
 </footer>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxTi5AFX39uZnBetd1VLwPy-lYGqudUspXfA_zozonkhl9p2xDPsri1jfFtL9vGBi_e/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxwvVW63ogVsdnjNHkhHLdlRH3xZkjOAD4DE9qJ4nmcwtd7Yfj_FU2XQjgO6J6um-jM/exec";
 
 let itens = [];
 let itemAtual = null;
+let salvando = false;
 
-// LISTAR
+// LISTAR (mostra últimos lançamentos do INVENTARIO)
 function listar() {
-  document.getElementById("form").style.display = "none";
-  document.getElementById("scanner").style.display = "none";
-  document.getElementById("lista").style.display = "block";
+  form.style.display = "none";
+  scanner.style.display = "none";
+  lista.style.display = "block";
 
   fetch(API_URL + "?action=listar")
     .then(r => r.json())
-    .then(d => {
-      itens = d;
-      render(d);
-    });
+    .then(resp => {
+      itens = (resp.items || []);
+      render(itens);
+    })
+    .catch(() => render([]));
 }
 
 // RENDER
 function render(data) {
-  const div = document.getElementById("lista");
-  div.innerHTML = "";
+  lista.innerHTML = "";
 
   data.forEach(i => {
-    if (!i.codigo_novo && !i.codigo_antigo) return;
-
-    div.innerHTML += `
+    lista.innerHTML += `
       <div class="item">
         <div>
-          <strong>${i.descricao_nova || i.descricao_antiga}</strong>
-          Qtd: ${i.qtd_atual}
+          <strong>${(i.descricao || "").toString()}</strong>
+          <div style="font-size:14px;">Código: ${(i.codigo_barras || "")}</div>
+          <div style="font-size:14px;">Qtd inventário: ${(i.qtd_inventario ?? "")}</div>
         </div>
-        <button class="btn small" onclick='editar(${JSON.stringify(i)})'>✏️</button>
       </div>
     `;
   });
+
+  if (!data.length) {
+    lista.innerHTML = `<div class="item"><div><strong>Nenhum lançamento ainda.</strong></div></div>`;
+  }
 }
 
-// BUSCA
-document.getElementById("search").addEventListener("input", e => {
+// BUSCA NA LISTA (local)
+search.addEventListener("input", e => {
   const t = e.target.value.toLowerCase();
-  render(itens.filter(i =>
-    JSON.stringify(i).toLowerCase().includes(t)
-  ));
+  const filtered = itens.filter(i => JSON.stringify(i).toLowerCase().includes(t));
+  render(filtered);
 });
 
-// EDITAR
-function editar(i) {
-  itemAtual = i;
-  document.getElementById("lista").style.display = "none";
-  document.getElementById("form").style.display = "block";
-
-  codigo.value = i.codigo_novo || i.codigo_antigo || "";
-  descricao.value = i.descricao_nova || i.descricao_antiga || "";
-  qtd_atual.value = i.qtd_atual || "";
-}
-
-// NOVO
+// NOVO (abre form e foca no código)
 function novo() {
-  itemAtual = {};
-  document.getElementById("lista").style.display = "none";
-  document.getElementById("form").style.display = "block";
+  itemAtual = null;
+  lista.style.display = "none";
+  scanner.style.display = "none";
+  form.style.display = "block";
+
+  codigo.value = "";
+  descricao.value = "";
+  qtd_atual.value = "";
+  contagem1.value = "";
+  contagem2.value = "";
+  contagem3.value = "";
+  obs.value = "";
+
+  setTimeout(() => codigo.focus(), 50);
 }
 
-// SALVAR
+// Buscar produto no CADASTRO_PRODUTOS e preencher
+function buscarProdutoPorCodigo(raw) {
+  const code = (raw || "").trim();
+  if (!code) return;
+
+  // limpa UI antes
+  itemAtual = null;
+  descricao.value = "";
+  qtd_atual.value = "";
+
+  fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(code))
+    .then(r => r.json())
+    .then(d => {
+      if (!d || d.notFound) {
+        itemAtual = null;
+        descricao.value = "Produto não encontrado no cadastro";
+        qtd_atual.value = "";
+        return;
+      }
+
+      // guarda tudo (mesmo que não tenha campos no layout)
+      itemAtual = d;
+
+      // preenche campos do layout
+      codigo.value = d.codigo_barras || code;
+      descricao.value = d.descricao || "";
+      qtd_atual.value = (d.quantidade ?? "");
+
+      // já foca na quantidade do inventário
+      setTimeout(() => contagem1.focus(), 50);
+    })
+    .catch(() => {
+      itemAtual = null;
+      descricao.value = "Erro ao buscar (API)";
+    });
+}
+
+// Ao digitar código: Enter ou sair do campo dispara busca
+codigo.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    buscarProdutoPorCodigo(codigo.value);
+  }
+});
+codigo.addEventListener("blur", () => {
+  // busca ao sair do campo (se tiver algo)
+  if ((codigo.value || "").trim()) buscarProdutoPorCodigo(codigo.value);
+});
+
+// SALVAR (salva no INVENTARIO e marca duplicados no servidor)
 function salvar() {
-  const data = {
+  if (salvando) return;
+
+  const code = (codigo.value || "").trim();
+  if (!code) return alert("Informe o código.");
+  if (!itemAtual || itemAtual.notFound) return alert("Produto não encontrado no CADASTRO_PRODUTOS.");
+
+  const qtdInvent = (contagem1.value || "").trim();
+  if (!qtdInvent) return alert("Informe a quantidade do inventário (Contagem 1).");
+
+  salvando = true;
+  const btn = document.getElementById("btnSalvar");
+  btn.disabled = true;
+  btn.innerText = "Salvando...";
+
+  const payload = {
     action: "salvar",
-    codigo_novo: codigo.value,
-    descricao_nova: descricao.value,
-    qtd_atual: qtd_atual.value,
-    contagem_1: contagem1.value,
-    contagem_2: contagem2.value,
-    contagem_3: contagem3.value,
-    observacao: obs.value,
-    _row: itemAtual?._row
+    codigo_barras: itemAtual.codigo_barras || code,
+    descricao: itemAtual.descricao || "",
+    modelo: itemAtual.modelo || "",
+    cor: itemAtual.cor || "",
+    tamanho: itemAtual.tamanho || "",
+    qtd_atual: itemAtual.quantidade ?? "",
+    qtd_inventario: qtdInvent,         // ✅ usuário só preenche isso
+    observacao: (obs.value || "").trim(),
+
+    // se quiser guardar as outras contagens no obs:
+    // (mantém layout igual e não perde informação)
+    _c2: (contagem2.value || "").trim(),
+    _c3: (contagem3.value || "").trim()
   };
 
-  fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(data)
-  }).then(() => {
-    alert("Salvo!");
-    listar();
-  });
+  // Salvamento em segundo plano (libera mais rápido)
+  fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+    .then(r => r.json())
+    .then(resp => {
+      if (resp && resp.ok === false) alert(resp.error || "Erro ao salvar.");
+    })
+    .catch(() => alert("Erro ao salvar (API)."))
+    .finally(() => {
+      salvando = false;
+      btn.disabled = false;
+      btn.innerText = "Salvar";
+    });
+
+  // já libera para o próximo item (UX)
+  novo();
+  listar();
 }
 
 // SCANNER
 function abrirScanner() {
-  document.getElementById("lista").style.display = "none";
-  document.getElementById("scanner").style.display = "block";
+  lista.style.display = "none";
+  form.style.display = "none";
+  scanner.style.display = "block";
 
-  const scanner = new Html5Qrcode("scanner");
-  scanner.start(
+  const qr = new Html5Qrcode("scanner");
+  qr.start(
     { facingMode: "environment" },
     { fps: 10, qrbox: 250 },
     code => {
-      scanner.stop();
-      buscarCodigo(code);
+      qr.stop().catch(()=>{});
+      // abre form e busca
+      novo();
+      codigo.value = code;
+      buscarProdutoPorCodigo(code);
     }
   );
 }
 
-function buscarCodigo(codigo) {
-  fetch(API_URL + "?action=buscar&codigo=" + codigo)
-    .then(r => r.json())
-    .then(d => {
-      if (d.notFound) {
-        novo();
-        document.getElementById("codigo").value = codigo;
-      } else {
-        editar(d);
-      }
-    });
-}
-
+// inicia
 listar();
 </script>
 
