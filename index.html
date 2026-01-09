@@ -39,13 +39,6 @@ header {
   margin-bottom: 10px;
   padding: 10px;
   border-radius: 6px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.item strong {
-  display: block;
 }
 
 .btn {
@@ -54,11 +47,6 @@ header {
   color: #fff;
   border: none;
   border-radius: 5px;
-}
-
-.btn.small {
-  padding: 6px 8px;
-  font-size: 14px;
 }
 
 #form {
@@ -106,10 +94,15 @@ footer button {
   <input id="descricao" placeholder="Descrição" readonly>
   <input id="qtd_atual" placeholder="Qtd Atual" readonly>
 
-  <!-- Quantidade do inventário = Contagem 1 -->
-  <input id="contagem1" placeholder="Quantidade (Inventário)">
-  <input id="contagem2" placeholder="Contagem 2 (opcional)">
-  <input id="contagem3" placeholder="Contagem 3 (opcional)">
+  <!-- Quantidade com teclado numérico -->
+  <input
+    id="contagem1"
+    placeholder="Quantidade (Inventário)"
+    type="number"
+    inputmode="numeric"
+    pattern="[0-9]*"
+  >
+
   <input id="obs" placeholder="Observação (opcional)">
 
   <button class="btn" id="btnSalvar" onclick="salvar()">Salvar</button>
@@ -124,56 +117,21 @@ footer button {
 </footer>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxwvVW63ogVsdnjNHkhHLdlRH3xZkjOAD4DE9qJ4nmcwtd7Yfj_FU2XQjgO6J6um-jM/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxTi5AFX39uZnBetd1VLwPy-lYGqudUspXfA_zozonkhl9p2xDPsri1jfFtL9vGBi_e/exec";
 
-let itens = [];
 let itemAtual = null;
 let salvando = false;
+let scannerAtivo = null;
 
-// LISTAR (mostra últimos lançamentos do INVENTARIO)
+// LISTAR
 function listar() {
   form.style.display = "none";
   scanner.style.display = "none";
   lista.style.display = "block";
-
-  fetch(API_URL + "?action=listar")
-    .then(r => r.json())
-    .then(resp => {
-      itens = (resp.items || []);
-      render(itens);
-    })
-    .catch(() => render([]));
+  lista.innerHTML = `<div class="item"><strong>Pronto para inventariar</strong></div>`;
 }
 
-// RENDER
-function render(data) {
-  lista.innerHTML = "";
-
-  data.forEach(i => {
-    lista.innerHTML += `
-      <div class="item">
-        <div>
-          <strong>${(i.descricao || "").toString()}</strong>
-          <div style="font-size:14px;">Código: ${(i.codigo_barras || "")}</div>
-          <div style="font-size:14px;">Qtd inventário: ${(i.qtd_inventario ?? "")}</div>
-        </div>
-      </div>
-    `;
-  });
-
-  if (!data.length) {
-    lista.innerHTML = `<div class="item"><div><strong>Nenhum lançamento ainda.</strong></div></div>`;
-  }
-}
-
-// BUSCA NA LISTA (local)
-search.addEventListener("input", e => {
-  const t = e.target.value.toLowerCase();
-  const filtered = itens.filter(i => JSON.stringify(i).toLowerCase().includes(t));
-  render(filtered);
-});
-
-// NOVO (abre form e foca no código)
+// NOVO
 function novo() {
   itemAtual = null;
   lista.style.display = "none";
@@ -184,111 +142,79 @@ function novo() {
   descricao.value = "";
   qtd_atual.value = "";
   contagem1.value = "";
-  contagem2.value = "";
-  contagem3.value = "";
   obs.value = "";
 
-  setTimeout(() => codigo.focus(), 50);
+  setTimeout(() => codigo.focus(), 100);
 }
 
-// Buscar produto no CADASTRO_PRODUTOS e preencher
-function buscarProdutoPorCodigo(raw) {
-  const code = (raw || "").trim();
-  if (!code) return;
-
-  // limpa UI antes
-  itemAtual = null;
-  descricao.value = "";
-  qtd_atual.value = "";
-
-  fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(code))
+// BUSCAR PRODUTO
+function buscarProdutoPorCodigo(cod) {
+  fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(cod))
     .then(r => r.json())
     .then(d => {
       if (!d || d.notFound) {
+        descricao.value = "Produto não encontrado";
         itemAtual = null;
-        descricao.value = "Produto não encontrado no cadastro";
-        qtd_atual.value = "";
         return;
       }
 
-      // guarda tudo (mesmo que não tenha campos no layout)
       itemAtual = d;
 
-      // preenche campos do layout
-      codigo.value = d.codigo_barras || code;
-      descricao.value = d.descricao || "";
-      qtd_atual.value = (d.quantidade ?? "");
+      codigo.value = d.codigo_barras;
+      descricao.value = d.descricao;
+      qtd_atual.value = d.quantidade;
 
-      // já foca na quantidade do inventário
-      setTimeout(() => contagem1.focus(), 50);
-    })
-    .catch(() => {
-      itemAtual = null;
-      descricao.value = "Erro ao buscar (API)";
+      setTimeout(() => contagem1.focus(), 100);
     });
 }
 
-// Ao digitar código: Enter ou sair do campo dispara busca
-codigo.addEventListener("keydown", (e) => {
+// DISPARA BUSCA AO SAIR DO CAMPO OU ENTER
+codigo.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
-    buscarProdutoPorCodigo(codigo.value);
+    buscarProdutoPorCodigo(codigo.value.trim());
   }
 });
+
 codigo.addEventListener("blur", () => {
-  // busca ao sair do campo (se tiver algo)
-  if ((codigo.value || "").trim()) buscarProdutoPorCodigo(codigo.value);
+  if (codigo.value.trim()) buscarProdutoPorCodigo(codigo.value.trim());
 });
 
-// SALVAR (salva no INVENTARIO e marca duplicados no servidor)
+// SALVAR
 function salvar() {
   if (salvando) return;
 
-  const code = (codigo.value || "").trim();
-  if (!code) return alert("Informe o código.");
-  if (!itemAtual || itemAtual.notFound) return alert("Produto não encontrado no CADASTRO_PRODUTOS.");
-
-  const qtdInvent = (contagem1.value || "").trim();
-  if (!qtdInvent) return alert("Informe a quantidade do inventário (Contagem 1).");
+  if (!itemAtual) return alert("Produto não encontrado.");
+  if (!contagem1.value.trim()) return alert("Informe a quantidade.");
 
   salvando = true;
-  const btn = document.getElementById("btnSalvar");
-  btn.disabled = true;
-  btn.innerText = "Salvando...";
+  btnSalvar.disabled = true;
+  btnSalvar.innerText = "Salvando...";
 
   const payload = {
     action: "salvar",
-    codigo_barras: itemAtual.codigo_barras || code,
-    descricao: itemAtual.descricao || "",
-    modelo: itemAtual.modelo || "",
-    cor: itemAtual.cor || "",
-    tamanho: itemAtual.tamanho || "",
-    qtd_atual: itemAtual.quantidade ?? "",
-    qtd_inventario: qtdInvent,         // ✅ usuário só preenche isso
-    observacao: (obs.value || "").trim(),
-
-    // se quiser guardar as outras contagens no obs:
-    // (mantém layout igual e não perde informação)
-    _c2: (contagem2.value || "").trim(),
-    _c3: (contagem3.value || "").trim()
+    codigo_barras: itemAtual.codigo_barras,
+    descricao: itemAtual.descricao,
+    modelo: itemAtual.modelo,
+    cor: itemAtual.cor,
+    tamanho: itemAtual.tamanho,
+    qtd_atual: itemAtual.quantidade,
+    qtd_inventario: contagem1.value.trim(),
+    observacao: obs.value.trim()
   };
 
-  // Salvamento em segundo plano (libera mais rápido)
-  fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
-    .then(r => r.json())
-    .then(resp => {
-      if (resp && resp.ok === false) alert(resp.error || "Erro ao salvar.");
-    })
-    .catch(() => alert("Erro ao salvar (API)."))
-    .finally(() => {
-      salvando = false;
-      btn.disabled = false;
-      btn.innerText = "Salvar";
-    });
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  })
+  .finally(() => {
+    salvando = false;
+    btnSalvar.disabled = false;
+    btnSalvar.innerText = "Salvar";
 
-  // já libera para o próximo item (UX)
-  novo();
-  listar();
+    // Após salvar → abre câmera automaticamente
+    abrirScanner();
+  });
 }
 
 // SCANNER
@@ -297,13 +223,16 @@ function abrirScanner() {
   form.style.display = "none";
   scanner.style.display = "block";
 
-  const qr = new Html5Qrcode("scanner");
-  qr.start(
+  if (scannerAtivo) {
+    scannerAtivo.stop().catch(()=>{});
+  }
+
+  scannerAtivo = new Html5Qrcode("scanner");
+  scannerAtivo.start(
     { facingMode: "environment" },
     { fps: 10, qrbox: 250 },
     code => {
-      qr.stop().catch(()=>{});
-      // abre form e busca
+      scannerAtivo.stop().catch(()=>{});
       novo();
       codigo.value = code;
       buscarProdutoPorCodigo(code);
@@ -311,7 +240,7 @@ function abrirScanner() {
   );
 }
 
-// inicia
+// INICIAL
 listar();
 </script>
 
