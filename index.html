@@ -22,6 +22,13 @@ header {
   font-size: 18px;
 }
 
+#contador {
+  background: #e3f2fd;
+  padding: 8px;
+  text-align: center;
+  font-size: 14px;
+}
+
 #search {
   width: 95%;
   padding: 10px;
@@ -81,6 +88,7 @@ footer button {
 <body>
 
 <header>Estoque / Inventário</header>
+<div id="contador">Itens inventariados: <strong id="total">0</strong></div>
 
 <input id="search" placeholder="Buscar produto...">
 
@@ -93,7 +101,6 @@ footer button {
   <input id="descricao" placeholder="Descrição" readonly>
   <input id="qtd_atual" placeholder="Qtd Atual" readonly>
 
-  <!-- Quantidade inventário -->
   <input
     id="contagem1"
     placeholder="Quantidade (Inventário)"
@@ -101,8 +108,6 @@ footer button {
     inputmode="numeric"
     pattern="[0-9]*"
   >
-
-  <button class="btn" id="btnSalvar" onclick="salvar()">Salvar</button>
 </div>
 
 <div id="scanner" style="display:none"></div>
@@ -119,6 +124,28 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzewZfLbLMdcEGXCeCWUDTA
 let itens = [];
 let itemAtual = null;
 let salvando = false;
+let totalInventariados = 0;
+let scannerAtivo = null;
+
+// 🔔 SOM
+function beep() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  osc.frequency.value = 800;
+  osc.connect(ctx.destination);
+  osc.start();
+  setTimeout(() => osc.stop(), 120);
+}
+
+// 📳 VIBRAÇÃO
+function vibrar() {
+  if (navigator.vibrate) navigator.vibrate(100);
+}
+
+// CONTADOR
+function atualizarContador() {
+  document.getElementById("total").innerText = totalInventariados;
+}
 
 // LISTAR
 function listar() {
@@ -138,7 +165,6 @@ function listar() {
 // RENDER
 function render(data) {
   lista.innerHTML = "";
-
   data.forEach(i => {
     lista.innerHTML += `
       <div class="item">
@@ -148,10 +174,6 @@ function render(data) {
       </div>
     `;
   });
-
-  if (!data.length) {
-    lista.innerHTML = `<div class="item"><strong>Nenhum lançamento ainda.</strong></div>`;
-  }
 }
 
 // NOVO
@@ -169,15 +191,8 @@ function novo() {
   setTimeout(() => codigo.focus(), 50);
 }
 
-// BUSCAR PRODUTO
-function buscarProdutoPorCodigo(raw) {
-  const code = (raw || "").trim();
-  if (!code) return;
-
-  itemAtual = null;
-  descricao.value = "";
-  qtd_atual.value = "";
-
+// BUSCAR
+function buscarProdutoPorCodigo(code) {
   fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(code))
     .then(r => r.json())
     .then(d => {
@@ -187,27 +202,15 @@ function buscarProdutoPorCodigo(raw) {
       }
 
       itemAtual = d;
-      codigo.value = d.codigo_barras || code;
-      descricao.value = d.descricao || "";
+      codigo.value = d.codigo_barras;
+      descricao.value = d.descricao;
       qtd_atual.value = d.quantidade ?? "";
 
       setTimeout(() => contagem1.focus(), 50);
     });
 }
 
-// EVENTOS DO CÓDIGO
-codigo.addEventListener("keydown", e => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    buscarProdutoPorCodigo(codigo.value);
-  }
-});
-
-codigo.addEventListener("blur", () => {
-  if (codigo.value.trim()) buscarProdutoPorCodigo(codigo.value);
-});
-
-// 🔥 AUTO-SALVAR AO PRESSIONAR ENTER NA QUANTIDADE
+// AUTO-SALVAR COM ENTER
 contagem1.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
@@ -215,16 +218,12 @@ contagem1.addEventListener("keydown", e => {
   }
 });
 
-// SALVAR
+// SALVAR + CONTÍNUO
 function salvar() {
-  if (salvando) return;
-
-  if (!itemAtual) return alert("Produto inválido.");
-  if (!contagem1.value.trim()) return alert("Informe a quantidade.");
+  if (salvando || !itemAtual) return;
+  if (!contagem1.value.trim()) return;
 
   salvando = true;
-  btnSalvar.disabled = true;
-  btnSalvar.innerText = "Salvando...";
 
   const payload = {
     action: "salvar",
@@ -240,26 +239,30 @@ function salvar() {
   fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
     .finally(() => {
       salvando = false;
-      btnSalvar.disabled = false;
-      btnSalvar.innerText = "Salvar";
+      totalInventariados++;
+      atualizarContador();
+      beep();
+      vibrar();
+      abrirScanner(); // 🔁 CONTÍNUO
     });
-
-  novo();
-  listar();
 }
 
-// SCANNER
+// SCANNER CONTÍNUO
 function abrirScanner() {
   lista.style.display = "none";
   form.style.display = "none";
   scanner.style.display = "block";
 
-  const qr = new Html5Qrcode("scanner");
-  qr.start(
+  if (scannerAtivo) {
+    scannerAtivo.stop().catch(()=>{});
+  }
+
+  scannerAtivo = new Html5Qrcode("scanner");
+  scannerAtivo.start(
     { facingMode: "environment" },
     { fps: 10, qrbox: 250 },
     code => {
-      qr.stop().catch(()=>{});
+      scannerAtivo.stop().catch(()=>{});
       novo();
       codigo.value = code;
       buscarProdutoPorCodigo(code);
