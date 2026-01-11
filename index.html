@@ -106,8 +106,15 @@ footer button {
   <input id="descricao" placeholder="Descrição" readonly>
   <input id="qtd_atual" placeholder="Qtd Atual" readonly>
 
-  <!-- Quantidade do inventário = Contagem 1 -->
-  <input id="contagem1" placeholder="Quantidade (Inventário)">
+  <!-- 🔢 Quantidade do inventário com teclado numérico -->
+  <input
+    id="contagem1"
+    placeholder="Quantidade (Inventário)"
+    type="number"
+    inputmode="numeric"
+    pattern="[0-9]*"
+  >
+
   <input id="contagem2" placeholder="Contagem 2 (opcional)">
   <input id="contagem3" placeholder="Contagem 3 (opcional)">
   <input id="obs" placeholder="Observação (opcional)">
@@ -196,7 +203,6 @@ function buscarProdutoPorCodigo(raw) {
   const code = (raw || "").trim();
   if (!code) return;
 
-  // limpa UI antes
   itemAtual = null;
   descricao.value = "";
   qtd_atual.value = "";
@@ -211,15 +217,11 @@ function buscarProdutoPorCodigo(raw) {
         return;
       }
 
-      // guarda tudo (mesmo que não tenha campos no layout)
       itemAtual = d;
-
-      // preenche campos do layout
       codigo.value = d.codigo_barras || code;
       descricao.value = d.descricao || "";
       qtd_atual.value = (d.quantidade ?? "");
 
-      // já foca na quantidade do inventário
       setTimeout(() => contagem1.focus(), 50);
     })
     .catch(() => {
@@ -236,11 +238,10 @@ codigo.addEventListener("keydown", (e) => {
   }
 });
 codigo.addEventListener("blur", () => {
-  // busca ao sair do campo (se tiver algo)
   if ((codigo.value || "").trim()) buscarProdutoPorCodigo(codigo.value);
 });
 
-// SALVAR (salva no INVENTARIO e marca duplicados no servidor)
+// SALVAR
 function salvar() {
   if (salvando) return;
 
@@ -264,16 +265,12 @@ function salvar() {
     cor: itemAtual.cor || "",
     tamanho: itemAtual.tamanho || "",
     qtd_atual: itemAtual.quantidade ?? "",
-    qtd_inventario: qtdInvent,         // ✅ usuário só preenche isso
+    qtd_inventario: qtdInvent,
     observacao: (obs.value || "").trim(),
-
-    // se quiser guardar as outras contagens no obs:
-    // (mantém layout igual e não perde informação)
     _c2: (contagem2.value || "").trim(),
     _c3: (contagem3.value || "").trim()
   };
 
-  // Salvamento em segundo plano (libera mais rápido)
   fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
     .then(r => r.json())
     .then(resp => {
@@ -286,7 +283,6 @@ function salvar() {
       btn.innerText = "Salvar";
     });
 
-  // já libera para o próximo item (UX)
   novo();
   listar();
 }
@@ -303,7 +299,6 @@ function abrirScanner() {
     { fps: 10, qrbox: 250 },
     code => {
       qr.stop().catch(()=>{});
-      // abre form e busca
       novo();
       codigo.value = code;
       buscarProdutoPorCodigo(code);
@@ -317,5 +312,3 @@ listar();
 
 </body>
 </html>
-
-
