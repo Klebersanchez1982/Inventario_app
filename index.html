@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inventário</title>
 
-<!-- Scanner -->
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
@@ -39,13 +38,6 @@ header {
   margin-bottom: 10px;
   padding: 10px;
   border-radius: 6px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.item strong {
-  display: block;
 }
 
 .btn {
@@ -54,11 +46,6 @@ header {
   color: #fff;
   border: none;
   border-radius: 5px;
-}
-
-.btn.small {
-  padding: 6px 8px;
-  font-size: 14px;
 }
 
 #form {
@@ -106,7 +93,7 @@ footer button {
   <input id="descricao" placeholder="Descrição" readonly>
   <input id="qtd_atual" placeholder="Qtd Atual" readonly>
 
-  <!-- 🔢 Quantidade do inventário com teclado numérico -->
+  <!-- Quantidade inventário -->
   <input
     id="contagem1"
     placeholder="Quantidade (Inventário)"
@@ -114,10 +101,6 @@ footer button {
     inputmode="numeric"
     pattern="[0-9]*"
   >
-
-  <input id="contagem2" placeholder="Contagem 2 (opcional)">
-  <input id="contagem3" placeholder="Contagem 3 (opcional)">
-  <input id="obs" placeholder="Observação (opcional)">
 
   <button class="btn" id="btnSalvar" onclick="salvar()">Salvar</button>
 </div>
@@ -137,7 +120,7 @@ let itens = [];
 let itemAtual = null;
 let salvando = false;
 
-// LISTAR (mostra últimos lançamentos do INVENTARIO)
+// LISTAR
 function listar() {
   form.style.display = "none";
   scanner.style.display = "none";
@@ -159,28 +142,19 @@ function render(data) {
   data.forEach(i => {
     lista.innerHTML += `
       <div class="item">
-        <div>
-          <strong>${(i.descricao || "").toString()}</strong>
-          <div style="font-size:14px;">Código: ${(i.codigo_barras || "")}</div>
-          <div style="font-size:14px;">Qtd inventário: ${(i.qtd_inventario ?? "")}</div>
-        </div>
+        <strong>${i.descricao || ""}</strong><br>
+        Código: ${i.codigo_barras || ""}<br>
+        Qtd inventário: ${i.qtd_inventario || ""}
       </div>
     `;
   });
 
   if (!data.length) {
-    lista.innerHTML = `<div class="item"><div><strong>Nenhum lançamento ainda.</strong></div></div>`;
+    lista.innerHTML = `<div class="item"><strong>Nenhum lançamento ainda.</strong></div>`;
   }
 }
 
-// BUSCA NA LISTA (local)
-search.addEventListener("input", e => {
-  const t = e.target.value.toLowerCase();
-  const filtered = itens.filter(i => JSON.stringify(i).toLowerCase().includes(t));
-  render(filtered);
-});
-
-// NOVO (abre form e foca no código)
+// NOVO
 function novo() {
   itemAtual = null;
   lista.style.display = "none";
@@ -191,14 +165,11 @@ function novo() {
   descricao.value = "";
   qtd_atual.value = "";
   contagem1.value = "";
-  contagem2.value = "";
-  contagem3.value = "";
-  obs.value = "";
 
   setTimeout(() => codigo.focus(), 50);
 }
 
-// Buscar produto no CADASTRO_PRODUTOS e preencher
+// BUSCAR PRODUTO
 function buscarProdutoPorCodigo(raw) {
   const code = (raw || "").trim();
   if (!code) return;
@@ -211,76 +182,66 @@ function buscarProdutoPorCodigo(raw) {
     .then(r => r.json())
     .then(d => {
       if (!d || d.notFound) {
-        itemAtual = null;
-        descricao.value = "Produto não encontrado no cadastro";
-        qtd_atual.value = "";
+        descricao.value = "Produto não encontrado";
         return;
       }
 
       itemAtual = d;
       codigo.value = d.codigo_barras || code;
       descricao.value = d.descricao || "";
-      qtd_atual.value = (d.quantidade ?? "");
+      qtd_atual.value = d.quantidade ?? "";
 
       setTimeout(() => contagem1.focus(), 50);
-    })
-    .catch(() => {
-      itemAtual = null;
-      descricao.value = "Erro ao buscar (API)";
     });
 }
 
-// Ao digitar código: Enter ou sair do campo dispara busca
-codigo.addEventListener("keydown", (e) => {
+// EVENTOS DO CÓDIGO
+codigo.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
     buscarProdutoPorCodigo(codigo.value);
   }
 });
+
 codigo.addEventListener("blur", () => {
-  if ((codigo.value || "").trim()) buscarProdutoPorCodigo(codigo.value);
+  if (codigo.value.trim()) buscarProdutoPorCodigo(codigo.value);
+});
+
+// 🔥 AUTO-SALVAR AO PRESSIONAR ENTER NA QUANTIDADE
+contagem1.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    salvar();
+  }
 });
 
 // SALVAR
 function salvar() {
   if (salvando) return;
 
-  const code = (codigo.value || "").trim();
-  if (!code) return alert("Informe o código.");
-  if (!itemAtual || itemAtual.notFound) return alert("Produto não encontrado no CADASTRO_PRODUTOS.");
-
-  const qtdInvent = (contagem1.value || "").trim();
-  if (!qtdInvent) return alert("Informe a quantidade do inventário (Contagem 1).");
+  if (!itemAtual) return alert("Produto inválido.");
+  if (!contagem1.value.trim()) return alert("Informe a quantidade.");
 
   salvando = true;
-  const btn = document.getElementById("btnSalvar");
-  btn.disabled = true;
-  btn.innerText = "Salvando...";
+  btnSalvar.disabled = true;
+  btnSalvar.innerText = "Salvando...";
 
   const payload = {
     action: "salvar",
-    codigo_barras: itemAtual.codigo_barras || code,
-    descricao: itemAtual.descricao || "",
-    modelo: itemAtual.modelo || "",
-    cor: itemAtual.cor || "",
-    tamanho: itemAtual.tamanho || "",
-    qtd_atual: itemAtual.quantidade ?? "",
-    qtd_inventario: qtdInvent,
-    observacao: (obs.value || "").trim(),
-    _c2: (contagem2.value || "").trim(),
-    _c3: (contagem3.value || "").trim()
+    codigo_barras: itemAtual.codigo_barras,
+    descricao: itemAtual.descricao,
+    modelo: itemAtual.modelo,
+    cor: itemAtual.cor,
+    tamanho: itemAtual.tamanho,
+    qtd_atual: itemAtual.quantidade,
+    qtd_inventario: contagem1.value.trim()
   };
 
   fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
-    .then(r => r.json())
-    .then(resp => {
-      if (resp && resp.ok === false) alert(resp.error || "Erro ao salvar.");
-    })
-    .catch(() => alert("Erro ao salvar (API)."))
     .finally(() => {
       salvando = false;
-      btn.disabled = false;
-      btn.innerText = "Salvar";
+      btnSalvar.disabled = false;
+      btnSalvar.innerText = "Salvar";
     });
 
   novo();
@@ -306,7 +267,6 @@ function abrirScanner() {
   );
 }
 
-// inicia
 listar();
 </script>
 
