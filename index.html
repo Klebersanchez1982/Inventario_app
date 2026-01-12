@@ -139,7 +139,7 @@ function atualizarContador() {
   document.getElementById("total").innerText = totalInventariados;
 }
 
-/* LISTAR */
+/* LISTAR (apenas visualização, não usado no fluxo contínuo) */
 function listar() {
   form.style.display = "none";
   scanner.style.display = "none";
@@ -231,7 +231,7 @@ contagem1.addEventListener("keydown", e => {
   }
 });
 
-/* SALVAR + INVENTÁRIO CONTÍNUO */
+/* SALVAR – FLUXO CONTÍNUO ESTÁVEL */
 function salvar() {
   if (salvando || !itemAtual) return;
   if (!contagem1.value.trim()) return;
@@ -249,10 +249,7 @@ function salvar() {
     qtd_inventario: contagem1.value.trim()
   };
 
-  fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  })
+  fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
     .then(r => r.json())
     .then(resp => {
       if (resp && resp.ok === false) {
@@ -260,16 +257,23 @@ function salvar() {
         return;
       }
 
+      // ✅ contador persistente
       totalInventariados++;
       atualizarContador();
+
+      // 🔔 feedback
       beep();
       vibrar();
 
-      novo();
+      // 🧹 limpa campos
+      codigo.value = "";
+      descricao.value = "";
+      qtd_atual.value = "";
+      contagem1.value = "";
+      itemAtual = null;
 
-      setTimeout(() => {
-        abrirScanner();
-      }, 300);
+      // 🔁 reabre câmera com segurança
+      setTimeout(() => abrirScanner(), 400);
     })
     .catch(() => alert("Erro ao salvar (API)"))
     .finally(() => salvando = false);
@@ -282,24 +286,30 @@ function abrirScanner() {
   scanner.style.display = "block";
 
   if (scannerAtivo) {
-    scannerAtivo.stop().catch(()=>{});
+    scannerAtivo.stop().catch(() => {});
     scannerAtivo = null;
   }
 
-  scannerAtivo = new Html5Qrcode("scanner");
-  scannerAtivo.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: 250 },
-    code => {
-      scannerAtivo.stop().catch(()=>{});
-      novo();
-      codigo.value = code;
-      buscarProdutoPorCodigo(code);
-    }
-  );
+  setTimeout(() => {
+    scannerAtivo = new Html5Qrcode("scanner");
+    scannerAtivo.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      code => {
+        scannerAtivo.stop().catch(() => {});
+        scannerAtivo = null;
+
+        form.style.display = "block";
+        scanner.style.display = "none";
+
+        codigo.value = code;
+        buscarProdutoPorCodigo(code);
+      }
+    );
+  }, 200);
 }
 
-/* INICIA */
+/* INÍCIO */
 listar();
 </script>
 
