@@ -47,14 +47,6 @@ header {
   border-radius: 6px;
 }
 
-.btn {
-  padding: 8px 12px;
-  background: #1976d2;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-}
-
 #form {
   display: none;
   padding: 10px;
@@ -127,27 +119,27 @@ let salvando = false;
 let totalInventariados = 0;
 let scannerAtivo = null;
 
-// 🔔 SOM
+/* 🔔 SOM */
 function beep() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const osc = ctx.createOscillator();
-  osc.frequency.value = 800;
+  osc.frequency.value = 900;
   osc.connect(ctx.destination);
   osc.start();
   setTimeout(() => osc.stop(), 120);
 }
 
-// 📳 VIBRAÇÃO
+/* 📳 VIBRAÇÃO */
 function vibrar() {
-  if (navigator.vibrate) navigator.vibrate(100);
+  if (navigator.vibrate) navigator.vibrate(120);
 }
 
-// CONTADOR
+/* 🔢 CONTADOR */
 function atualizarContador() {
   document.getElementById("total").innerText = totalInventariados;
 }
 
-// LISTAR
+/* LISTAR */
 function listar() {
   form.style.display = "none";
   scanner.style.display = "none";
@@ -162,9 +154,15 @@ function listar() {
     .catch(() => render([]));
 }
 
-// RENDER
+/* RENDER */
 function render(data) {
   lista.innerHTML = "";
+
+  if (!data.length) {
+    lista.innerHTML = `<div class="item"><strong>Nenhum lançamento ainda.</strong></div>`;
+    return;
+  }
+
   data.forEach(i => {
     lista.innerHTML += `
       <div class="item">
@@ -176,7 +174,7 @@ function render(data) {
   });
 }
 
-// NOVO
+/* NOVO */
 function novo() {
   itemAtual = null;
   lista.style.display = "none";
@@ -191,8 +189,11 @@ function novo() {
   setTimeout(() => codigo.focus(), 50);
 }
 
-// BUSCAR
-function buscarProdutoPorCodigo(code) {
+/* BUSCAR PRODUTO */
+function buscarProdutoPorCodigo(raw) {
+  const code = (raw || "").trim();
+  if (!code) return;
+
   fetch(API_URL + "?action=buscar&codigo=" + encodeURIComponent(code))
     .then(r => r.json())
     .then(d => {
@@ -210,7 +211,19 @@ function buscarProdutoPorCodigo(code) {
     });
 }
 
-// AUTO-SALVAR COM ENTER
+/* EVENTOS */
+codigo.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    buscarProdutoPorCodigo(codigo.value);
+  }
+});
+
+codigo.addEventListener("blur", () => {
+  if (codigo.value.trim()) buscarProdutoPorCodigo(codigo.value);
+});
+
+/* ENTER SALVA */
 contagem1.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     e.preventDefault();
@@ -218,7 +231,7 @@ contagem1.addEventListener("keydown", e => {
   }
 });
 
-// SALVAR + CONTÍNUO
+/* SALVAR + INVENTÁRIO CONTÍNUO */
 function salvar() {
   if (salvando || !itemAtual) return;
   if (!contagem1.value.trim()) return;
@@ -236,18 +249,33 @@ function salvar() {
     qtd_inventario: contagem1.value.trim()
   };
 
-  fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
-    .finally(() => {
-      salvando = false;
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  })
+    .then(r => r.json())
+    .then(resp => {
+      if (resp && resp.ok === false) {
+        alert(resp.error || "Erro ao salvar");
+        return;
+      }
+
       totalInventariados++;
       atualizarContador();
       beep();
       vibrar();
-      abrirScanner(); // 🔁 CONTÍNUO
-    });
+
+      novo();
+
+      setTimeout(() => {
+        abrirScanner();
+      }, 300);
+    })
+    .catch(() => alert("Erro ao salvar (API)"))
+    .finally(() => salvando = false);
 }
 
-// SCANNER CONTÍNUO
+/* SCANNER CONTÍNUO */
 function abrirScanner() {
   lista.style.display = "none";
   form.style.display = "none";
@@ -255,6 +283,7 @@ function abrirScanner() {
 
   if (scannerAtivo) {
     scannerAtivo.stop().catch(()=>{});
+    scannerAtivo = null;
   }
 
   scannerAtivo = new Html5Qrcode("scanner");
@@ -270,6 +299,7 @@ function abrirScanner() {
   );
 }
 
+/* INICIA */
 listar();
 </script>
 
